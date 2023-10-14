@@ -39,7 +39,7 @@ def parse_arguments():
     ap.add_argument("-o", "--output", type=str,
         help="path to optional output video file")
     # confidence default 0.4
-    ap.add_argument("-c", "--confidence", type=float, default=0.3,
+    ap.add_argument("-c", "--confidence", type=float, default=0.97,
         help="minimum probability to filter weak detections")
     ap.add_argument("-s", "--skip-frames", type=int, default=30,
         help="# of skip frames between detections")
@@ -119,10 +119,13 @@ def people_counter():
 
 	# loop over frames from the video stream
 	while True:
+     
+     
 		# grab the next frame and handle if we are reading from either
 		# VideoCapture or VideoStream
 		frame = vs.read()
 		frame = frame[1] if args.get("input", False) else frame
+		frame = cv2.flip(frame,1)
 
 		# if we are viewing a video and we did not grab a frame then we
 		# have reached the end of the video
@@ -181,12 +184,13 @@ def people_counter():
 					# if the class label is not a person, ignore it
 					if CLASSES[idx] != "person":
 						continue
+					
 
 					# compute the (x, y)-coordinates of the bounding box
 					# for the object
 					box = detections[0, 0, i, 3:7] * np.array([W, H, W, H])
 					(startX, startY, endX, endY) = box.astype("int")
-
+					cv2.rectangle(frame, (startX, startY), (endX, endY), (0, 255, 0), 2)
 					# construct a dlib rectangle object from the bounding
 					# box coordinates and then start the dlib correlation
 					# tracker
@@ -301,6 +305,10 @@ def people_counter():
 			cv2.putText(frame, text, (centroid[0] - 10, centroid[1] - 10),
 				cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 			cv2.circle(frame, (centroid[0], centroid[1]), 4, (255, 255, 255), -1)
+   
+			for (startX, startY, endX, endY) in rects:
+				# Draw the bounding box
+				cv2.rectangle(frame, (startX, startY), (endX, endY), (0, 0, 0), 2)
 
 		# construct a tuple of information we will be displaying on the frame
 
@@ -316,7 +324,7 @@ def people_counter():
   
 		for (i, (k, v)) in enumerate(info_status):
 			text = "{}: {}".format(k, v)
-			cv2.putText(frame, text, (10, H - ((i * 20) + 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+			cv2.putText(frame, text, (10, H - ((i * 20) + 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (153, 255, 255), 2)
 
 		info_total = [
 		("Total people inside", ', '.join(map(str, total))),

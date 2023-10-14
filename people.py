@@ -1,53 +1,97 @@
 import cv2
 import numpy as np
 import imutils
+from tracker.centroidtracker import CentroidTracker
 
-def people_counter():
-    # Specify the full paths to the deploy.prototxt and mobilenet_ssd.caffemodel files
-    deploy_file = "detector/MobileNetSSD_deploy.prototxt"
-    model_file = "detector/MobileNetSSD_deploy.caffemodel"
+# Load the object detection model
+prototxt = "detector/MobileNetSSD_deploy.prototxt"
+model = "detector/MobileNetSSD_deploy.caffemodel"
+net = cv2.dnn.readNetFromCaffe(prototxt, model)
 
-    # Load the pre-trained model
-    net = cv2.dnn.readNetFromCaffe(deploy_file, model_file)
+# Initialize variables
+totalFrames = 0
 
-    # Open the default camera (camera index 0)
-    cap = cv2.VideoCapture(0)
+# Initialize the frame dimensions (we'll set them as soon as we read
+# the first frame from the video)
+W = None
+H = None
 
-    # Initialize variables
-    total_people = 0
+# Initialize the centroid tracker
+ct = CentroidTracker()
 
-    while True:
-        
-        # setup camera
-        ret, frame = cap.read()
-        frame = cv2.flip(frame,1)
-        if not ret:
-            break
+# Initialize the video stream (use your video source here)
+cap = cv2.VideoCapture(0)
 
-        # Resize the frame
-        frame = imutils.resize(frame, width = 500)
-        
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        
-        
-        # if the frame dimensions are empty, set them
-        if W is None or H is None:
-            (H, W) = frame.shape[:2]
+# Define class labels
+CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
+    "bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
+    "dog", "horse", "motorbike", "person", "pottedplant", "sheep",
+    "sofa", "train", "tvmonitor"]
 
+# Loop over frames from the video stream
+while True:
+    ret, frame = cap.read()
+    frame = cv2.flip(frame, 1)
 
-        # Display the count on the frame
-        cv2.putText(frame, f"Total People: {total_people}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    if not ret:
+        break
 
-        # Display the frame
-        cv2.imshow("People Counter", frame)
+    # Resize the frame to have a maximum width of 500 pixels
+    frame = imutils.resize(frame, width=500)
 
-        # Break the loop when 'q' key is pressed
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+    # if the frame dimensions are empty, set them
+    if W is None or H is None:
+        (H, W) = frame.shape[:2]
 
-    # Release the video capture and close all OpenCV windows
-    cap.release()
-    cv2.destroyAllWindows()
+    # Check to see if we should run object detection
+    if totalFrames % 30 == 0:
+        # Initialize the list of people's centroids
+        rects = []
 
-if __name__ == "__main__":
-    people_counter()
+        # Convert the frame to a blob and pass it through the network
+        blob = cv2.dnn.blobFromImage(frame, 0.007843, (W, H), 127.5)
+        net.setInput(blob)
+        detections = net.forward()
+
+# Inside the loop where you process detections
+        for i in range(detections.shape[2]):
+            confidence = detections[0, 0, i, 2]
+
+            if confidence > 0.4:
+                class_id = int(detections[0, 0, i, 1])
+
+                if CLASSES[class_id] == "person":
+                    
+                    # Extract the bounding box coordinates
+                    box = detections[0, 0, i, 3:7] * np.array([W, H, W, H])
+                    (startX, startY, endX, endY) = box.astype("int")
+
+                    # Draw bounding boxes
+                    cv2.rectangle(frame, (startX, startY), (endX, endY), (0, 255, 0), 2)
+
+            #        Compute the centroid of the bounding box
+                    centroid_x = int((startX + endX) / 2)
+                    centroid_y = int((startY + endY) / 2)
+
+                    # Store the bounding box coordinates in 'rects'
+                    rects.append((startX, startY, endX, endY))
+
+        # # Update the centroid tracker with the new centroids
+        # objects = ct.update(rects)
+
+        # for (objectID, centroid) in objects.items():
+        #     # Draw the ID and centroid on the frame
+        #     text = "Person {}".format(objectID)
+        #     cv2.putText(frame, text, (centroid[0] - 10, centroid[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        #     cv2.circle(frame, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
+
+    # Show the frame
+    cv2.imshow("People Counter", frame)
+
+    # Exit the loop by pressing 'q'
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# Release the video stream and close the window
+cap.release()
+cv2.destroyAllWindows()
