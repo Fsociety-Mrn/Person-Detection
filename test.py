@@ -1,5 +1,6 @@
 import torch
 import cv2
+import time
 
 from models.experimental import attempt_load
 from utils.general import non_max_suppression
@@ -14,15 +15,13 @@ def main():
     device = select_device('')
     model = attempt_load(weights_path, device=device)
     model.eval()
-    
-
 
     # OpenCV VideoCapture for camera feed (usually camera index 0)
     cap = cv2.VideoCapture(0)
 
+    person_info = {}  # Dictionary to store person information
     while True:
         ret, frame = cap.read()
-        
         frame = cv2.flip(frame, 1)
         if not ret:
             break
@@ -51,6 +50,15 @@ def main():
                     color = (0, 255, 0)  # Green
                     cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                     cv2.putText(frame, f'{label} ({confidence:.2f})', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                    
+                    # Track person entry
+                    person_id = id(det)
+                    if person_id not in person_info:
+                        person_info[person_id] = {'entered': False}
+                    
+                    if not person_info[person_id]['entered']:
+                        print(f'Person {person_id} entered')
+                        person_info[person_id]['entered'] = True
 
         # Display the frame with detections in real-time
         cv2.imshow('Real-time Person Detection', frame)
