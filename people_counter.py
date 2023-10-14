@@ -39,7 +39,7 @@ def parse_arguments():
     ap.add_argument("-o", "--output", type=str,
         help="path to optional output video file")
     # confidence default 0.4
-    ap.add_argument("-c", "--confidence", type=float, default=0.4,
+    ap.add_argument("-c", "--confidence", type=float, default=0.3,
         help="minimum probability to filter weak detections")
     ap.add_argument("-s", "--skip-frames", type=int, default=30,
         help="# of skip frames between detections")
@@ -66,8 +66,10 @@ def people_counter():
 	# main function for people_counter.py
 	args = parse_arguments()
 	# initialize the list of class labels MobileNet SSD was trained to detect
-	CLASSES = ["person"]
-
+	CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
+		"bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
+		"dog", "horse", "motorbike", "person", "pottedplant", "sheep",
+		"sofa", "train", "tvmonitor"]
 	# load our serialized model from disk
 	net = cv2.dnn.readNetFromCaffe(args["prototxt"], args["model"])
 
@@ -217,11 +219,13 @@ def people_counter():
 
 				# add the bounding box coordinates to the rectangles list
 				rects.append((startX, startY, endX, endY))
-
+    
+# ********** THRESHOLD LINE 
 		# draw a horizontal line in the center of the frame -- once an
 		# object crosses this line we will determine whether they were
 		# moving 'up' or 'down'
-		cv2.line(frame, (0, H // 2), (W, H // 2), (0, 0, 0), 3)
+		cv2.line(frame, (W // 2, 0), (W // 2, H), (0, 0, 255), 3)
+
 		cv2.putText(frame, "-Prediction border - Entrance-", (10, H - ((i * 20) + 200)),
 			cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
 
@@ -252,20 +256,23 @@ def people_counter():
 
 				# check to see if the object has been counted or not
 				if not to.counted:
+        
+ # ******************* EXIT (Left to Right)    
 					# if the direction is negative (indicating the object
 					# is moving up) AND the centroid is above the center
 					# line, count the object
-					if direction < 0 and centroid[1] < H // 2:
+					if direction < 0 and centroid[1] < W // 2:
 						totalUp += 1
 						date_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 						move_out.append(totalUp)
 						out_time.append(date_time)
 						to.counted = True
 
+# ******************* ENTRY (Left to Right)
 					# if the direction is positive (indicating the object
 					# is moving down) AND the centroid is below the
 					# center line, count the object
-					elif direction > 0 and centroid[1] > H // 2:
+					elif direction > 0 and centroid[1] > W // 2:
 						totalDown += 1
 						date_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 						move_in.append(totalDown)
@@ -296,34 +303,36 @@ def people_counter():
 			cv2.circle(frame, (centroid[0], centroid[1]), 4, (255, 255, 255), -1)
 
 		# construct a tuple of information we will be displaying on the frame
+
+
+
+# ****** NOTE: display the output info_status
+
 		info_status = [
 		("Exit", totalUp),
 		("Enter", totalDown),
 		("Status", status),
 		]
+  
+		for (i, (k, v)) in enumerate(info_status):
+			text = "{}: {}".format(k, v)
+			cv2.putText(frame, text, (10, H - ((i * 20) + 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
 
 		info_total = [
 		("Total people inside", ', '.join(map(str, total))),
 		]
-
-		# display the output
-		for (i, (k, v)) in enumerate(info_status):
-			text = "{}: {}".format(k, v)
-			cv2.putText(frame, text, (10, H - ((i * 20) + 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
-
+# info_total
 		for (i, (k, v)) in enumerate(info_total):
 			text = "{}: {}".format(k, v)
-			cv2.putText(frame, text, (265, H - ((i * 20) + 60)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+			cv2.putText(frame, text, (265, H - ((i * 20) + 60)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
-		# initiate a simple log to save the counting data
-		if config["Log"]:
-			log_data(move_in, in_time, move_out, out_time)
+
 
 		# check to see if we should write the frame to disk
 		if writer is not None:
 			writer.write(frame)
 
-		# show the output frame
+# ****** NOTE show the output frame
 		cv2.imshow("Real-Time Monitoring/Analysis Window", frame)
 		key = cv2.waitKey(1) & 0xFF
 		# if the `q` key was pressed, break from the loop
