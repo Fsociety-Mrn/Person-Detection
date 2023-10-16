@@ -7,7 +7,7 @@ from utils.general import non_max_suppression
 from utils.torch_utils import select_device
 
 # Set your default values here
-weights_path = 'yolov3-tiny.pt'  # Model weights path
+weights_path = 'yolov5s.pt'  # Model weights path
 img_size = 640  # Inference size (pixels)
 
 def main():
@@ -37,7 +37,7 @@ def main():
         results = model(img)
 
         # Post-process detections
-        results = non_max_suppression(results, conf_thres=0.3, iou_thres=0.4)[0]
+        results = non_max_suppression(results, conf_thres=0.4, iou_thres=0.4)[0]
 
         # Draw bounding boxes for class 0 (person) only
         if results is not None and len(results) > 0:
