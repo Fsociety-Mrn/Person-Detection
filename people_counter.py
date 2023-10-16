@@ -39,7 +39,7 @@ def parse_arguments():
     ap.add_argument("-o", "--output", type=str,
         help="path to optional output video file")
     # confidence default 0.4
-    ap.add_argument("-c", "--confidence", type=float, default=0.97,
+    ap.add_argument("-c", "--confidence", type=float, default=0.8,
         help="minimum probability to filter weak detections")
     ap.add_argument("-s", "--skip-frames", type=int, default=30,
         help="# of skip frames between detections")
