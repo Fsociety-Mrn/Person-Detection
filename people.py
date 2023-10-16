@@ -57,7 +57,7 @@ while True:
         for i in range(detections.shape[2]):
             confidence = detections[0, 0, i, 2]
 
-            if confidence > 0.3:
+            if confidence > 0.8:
                 class_id = int(detections[0, 0, i, 1])
 
                 if CLASSES[class_id] == "person":
