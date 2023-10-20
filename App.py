@@ -37,7 +37,7 @@ in_time = []
 
 def generate_frames():
 
-    global totalDown,totalUp,move_out,move_in
+    global totalDown,totalUp,move_out,move_in,total
     
     # Initialize variables
     totalFrames = 0
