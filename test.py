@@ -63,7 +63,7 @@ def main():
                     label = f'Person'
                     confidence = float(conf)
 
-                    if confidence < 0.7:
+                    if confidence < 0.5:
                         break
                     color = (0, 255, 0)  # Green
                     cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
