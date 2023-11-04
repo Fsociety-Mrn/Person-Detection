@@ -1,16 +1,25 @@
 import torch
 import cv2
-import time
+import numpy as np
 
 from models.experimental import attempt_load
 from utils.general import non_max_suppression
 from utils.torch_utils import select_device
 
+
 # Set your default values here
-weights_path = 'yolov5s.pt'  # Model weights path
-img_size = 640  # Inference size (pixels)
+weights_path = 'yolov3-tiny.pt'  # Model weights path
+img_size = 320  # Inference size (pixels)
 
 def main():
+    
+
+    
+    # Initialize the frame dimensions (we'll set them as soon as we read
+    #  the first frame from the video)
+    W = None
+    H = None
+
     # Initialize device and model
     device = select_device('')
     model = attempt_load(weights_path, device=device)
@@ -23,8 +32,29 @@ def main():
     while True:
         ret, frame = cap.read()
         frame = cv2.flip(frame, 1)
+        
+        
+        rects = []
+        
         if not ret:
             break
+        
+        
+        # if the frame dimensions are empty, set them
+        if W is None or H is None:
+            (H, W) = frame.shape[:2]
+        
+        
+# ****************************** THRESHOLD LINE ****************************** #
+
+		# draw a horizontal line in the center of the frame -- once an
+		# object crosses this line we will determine whether they were
+		# moving 'up' or 'down'
+        # Draw a vertical line in the center of the frame
+        cv2.line(frame, (W // 2, 0), (W // 2, H), (0, 0, 0), 1)
+
+        # cv2.putText(frame, "-Prediction border - Entrance-", (10, H - ((i * 20) + 200)),
+        #     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
 
         # Resize and preprocess the input image
         img = cv2.resize(frame, (img_size, img_size))
@@ -43,14 +73,20 @@ def main():
         if results is not None and len(results) > 0:
             for det in results:
                 x1, y1, x2, y2, conf, class_id = det
-                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+                
+                
+                x1, y1, x2, y2 = int(x1 * 2), int(y1 * 2), int(x2 * 2), int(y2 * 2)
                 if int(class_id) == 0:  # Class 0 is a person
                     label = f'Person'
                     confidence = float(conf)
+                    
+                    if confidence < 0.7:
+                        break
                     color = (0, 255, 0)  # Green
                     cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                     cv2.putText(frame, f'{label} ({confidence:.2f})', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
                     
+
                     # Track person entry
                     person_id = id(det)
                     if person_id not in person_info:
@@ -59,7 +95,10 @@ def main():
                     if not person_info[person_id]['entered']:
                         print(f'Person {person_id} entered')
                         person_info[person_id]['entered'] = True
+                        
 
+            
+            
         # Display the frame with detections in real-time
         cv2.imshow('Real-time Person Detection', frame)
 
