@@ -24,18 +24,21 @@ def main():
     cap = cv2.VideoCapture(0)
 
     person_info = {}  # Dictionary to store person information
+    entry_count = 0  # Counter for people entering
+    exit_count = 0   # Counter for people exiting
+
     while True:
         ret, frame = cap.read()
         frame = cv2.flip(frame, 1)
-
-        rects = []
-
         if not ret:
             break
 
         # if the frame dimensions are empty, set them
         if W is None or H is None:
             (H, W) = frame.shape[:2]
+
+        # List of People detected
+        rects = []
 
         # Draw a vertical line in the center of the frame
         cv2.line(frame, (W // 2, 0), (W // 2, H), (0, 0, 0), 1)
@@ -57,25 +60,46 @@ def main():
         if results is not None and len(results) > 0:
             for det in results:
                 x1, y1, x2, y2, conf, class_id = det
-
                 x1, y1, x2, y2 = int(x1 * 2), int(y1 * 2), int(x2 * 2), int(y2 * 2)
                 if int(class_id) == 0:  # Class 0 is a person
                     label = f'Person'
                     confidence = float(conf)
-
-                    if confidence < 0.5:
+                    if confidence < 0.7:
                         break
                     color = (0, 255, 0)  # Green
                     cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                     cv2.putText(frame, f'{label} ({confidence:.2f})', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
-                    # Count the number of detected people
-                    person_info[id(det)] = (x1, y1, x2, y2)
+                    # Track person entry
+                    person_id = id(det)
+                    if person_id not in person_info:
+                        person_info[person_id] = {'entered': False, 'previous_position': (x1, y1)}
 
-        # Display the count of detected people on the screen
-        cv2.putText(frame, f'Detected People: {len(person_info)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                    # Check the person's previous position to determine the direction
+                    previous_x, previous_y = person_info[person_id]['previous_position']
+                    if x1 > previous_x and x1 >= W // 2:
+                        direction = 'Going to Right'
+                        if not person_info[person_id]['entered']:
+                            entry_count += 1
+                            person_info[person_id]['entered'] = True
+                    elif x1 < previous_x and x1 <= W // 2:
+                        direction = 'Going to Left'
+                        if not person_info[person_id]['entered']:
+                            exit_count += 1
+                            person_info[person_id]['entered'] = True
+                    else:
+                        direction = 'Undetermined'
 
-        # Display the frame with detections in real-time
+                    # Update the previous position
+                    person_info[person_id]['previous_position'] = (x1, y1)
+
+                    if not person_info[person_id]['entered']:
+                        print(f'Person {person_id} is {direction}')
+                        rects.append((x1, y1, x2, y2))
+
+        # Display the frame with detections and counters in real-time
+        cv2.putText(frame, f'Entry Count: {entry_count}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.putText(frame, f'Exit Count: {exit_count}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
         cv2.imshow('Real-time Person Detection', frame)
 
         # Exit on 'q' key press
