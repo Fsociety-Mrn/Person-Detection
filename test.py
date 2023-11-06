@@ -7,7 +7,7 @@ from utils.general import non_max_suppression
 from utils.torch_utils import select_device
 
 # Set your default values here
-weights_path = 'yolov3-tiny.pt'  # Model weights path
+weights_path = 'yolov8n.pt'  # Model weights path
 img_size = 320  # Inference size (pixels)
 
 def main():
